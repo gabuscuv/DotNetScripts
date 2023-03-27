@@ -1,0 +1,66 @@
+#!/bin/bash
+###-----------------------------------------------------------------
+###   Author:   Gabriel Bustillo del Cuvillo
+###   License:  Apache License 2.0
+###   Original Repo: https://github.com/gabuscuv/DotNetScripts
+###-----------------------------------------------------------------
+
+# envs: CONNECTION_STRING_Name, CONNECTION_STRING, DataBaseConnector, TablesToGenerate, 
+#       ContextName, NameSpace, ModelFolder, ModelMakerName
+
+### Example env Variable
+## Related to Database Connection
+# CONNECTION_STRING_Name="GameList"
+# CONNECTION_STRING="Data Source="$HOME"/GameLists.db;" 
+# DataBaseConnector="Microsoft.EntityFrameworkCore.sqlite"
+
+# TablesToGenerate=("Backlog" "GamesId")
+
+## Related to Classes Stuff
+# ContextName="GameListsContext"
+# ProjectName="gamelistdb-model"
+# NameSpace="GameListDB.Model"
+# ModelFolder="Model"
+
+## tmp directory
+# ModelMakerName=".ModelMaker"
+
+function DotNetScaffold(){
+    ROOT_PWD=$PWD
+
+    if [ ! -d "$ROOT_PWD/$ModelMakerName" ];then
+        dotnet new webapp --name $NameSpace --output $ROOT_PWD/$ModelMakerName
+        rm -r $ROOT_PWD/$ModelMakerName/{wwwroot,Properties,Pages}
+        echo -e "WebApplication.CreateBuilder(args).Build();" > $ROOT_PWD/$ModelMakerName/Program.cs
+
+        cd $ROOT_PWD/$ModelMakerName
+
+        dotnet user-secrets init
+        dotnet user-secrets set ConnectionStrings.$CONNECTION_STRING_Name "${CONNECTION_STRING}"
+        dotnet add package Microsoft.EntityFrameworkCore.Design
+        dotnet add package $DataBaseConnector
+    fi
+
+    if [ ! -d $ROOT_PWD/$ProjectName ];then
+        dotnet new classlib --language C# -f netstandard2.1 --name $NameSpace --output $ROOT_PWD/$ProjectName
+        rm $ROOT_PWD/$ProjectName/Class1.cs
+    fi
+
+    cd $ROOT_PWD/$ModelMakerName
+
+    rm -r {$ROOT_PWD/$ProjectName/$ModelFolder,$ROOT_PWD/$ProjectName/$ContextName.cs}
+
+    TABLES=""
+
+    for i in ${TablesToGenerate[@]}
+    do
+        TABLES="$TABLES --table $i"
+    done
+
+    dotnet ef dbcontext scaffold Name=ConnectionStrings.$CONNECTION_STRING_Name $DataBaseConnector --context $ContextName --context-dir $ROOT_PWD/$ProjectName --output-dir $ROOT_PWD/$ProjectName/$ModelFolder $TABLES
+
+    if [ $SED_OVERRIDE == "true" ];then
+    echo 
+    #    sed -e $ROOT_PWD/$ProjectName/$ContextName "s/\n\t\t=> optionsBuilder.UseSqlite($CONNECTION_STRING);/$String/"
+    fi
+}
