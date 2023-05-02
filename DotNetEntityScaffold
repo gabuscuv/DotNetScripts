@@ -44,6 +44,8 @@ function DotNetScaffold(){
     if [ ! -d $ROOT_PWD/$ProjectName ];then
         dotnet new classlib --language C# -f netstandard2.1 --name $NameSpace --output $ROOT_PWD/$ProjectName
         rm $ROOT_PWD/$ProjectName/Class1.cs
+        dotnet add package Microsoft.EntityFrameworkCore
+        dotnet add package $DataBaseConnector
     fi
 
     cd $ROOT_PWD/$ModelMakerName
@@ -60,7 +62,8 @@ function DotNetScaffold(){
     dotnet ef dbcontext scaffold Name=ConnectionStrings.$CONNECTION_STRING_Name $DataBaseConnector --context $ContextName --context-dir $ROOT_PWD/$ProjectName --output-dir $ROOT_PWD/$ProjectName/$ModelFolder $TABLES
 
     if [ $SED_OVERRIDE == "true" ];then
-    echo 
-    #    sed -e $ROOT_PWD/$ProjectName/$ContextName "s/\n\t\t=> optionsBuilder.UseSqlite($CONNECTION_STRING);/$String/"
+    CONNECTION_STRING_Name=$(printf '%s\n' "$CONNECTION_STRING_Name" | sed -e 's/[\/&]/\\&/g')
+    STRING=$(printf '%s\n' "$STRING" | sed -e 's/[\/&]/\\&/g')
+        sed -i "s/Name=ConnectionStrings.$CONNECTION_STRING_Name/$STRING/g" $ROOT_PWD/$ProjectName/$ContextName".cs"
     fi
 }
